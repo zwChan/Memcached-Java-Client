@@ -38,11 +38,24 @@ public class MemcachedTest {
 	 */
 	public static void main(String[] args) {
 
-		String[] serverlist = { "cache1.int.meetup.com:12345", "cache0.int.meetup.com:12345" };
+		String[] serverlist = {				
+				"192.168.17.73:11211",
+				"192.168.17.172:11211",
+				"192.168.17.155:11211", 
+				"192.168.112.60:11211",/*
+				"192.168.112.56:11214",	
+				"192.168.112.56:11215",
+				"192.168.112.56:11216",
+				"192.168.112.56:11217",
+				"192.168.112.56:11218",
+				"192.168.112.56:11219",*/
+ };
+		Integer[] weights = {1,1,1,1,1,1,1,1,1,1};
 
 		// initialize the pool for memcache servers
 		SockIOPool pool = SockIOPool.getInstance();
-		pool.setServers( serverlist );
+		pool.setServers( serverlist );	
+		pool.setWeights(weights);
 
 		pool.setInitConn(5);
 		pool.setMinConn(5);
@@ -52,9 +65,9 @@ public class MemcachedTest {
 		pool.setNagle(false);
 		pool.initialize();
 
-		int threads = Integer.parseInt(args[0]);
-		int runs = Integer.parseInt(args[1]);
-		int size = 1024 * Integer.parseInt(args[2]);	// how many kilobytes
+		int threads = Integer.parseInt("10");
+		int runs = Integer.parseInt("10000");
+		int size = 1024 * Integer.parseInt("10");	// how many kilobytes
 
 		// get object to store
 		int[] obj = new int[size];
@@ -103,7 +116,7 @@ public class MemcachedTest {
 		private int size;
 
 		public bench(int runs, int threadNum, int[] object, String[] keys) {
-			this.runs = runs;
+			this.runs = runs*100;
 			this.threadNum = threadNum;
 			this.object = object;
 			this.keys = keys;
@@ -121,26 +134,51 @@ public class MemcachedTest {
 
 			// time deletes
 			long start = System.currentTimeMillis();
-			for (int i = 0; i < runs; i++) {
+			/*for (int i = 0; i < runs; i++) {
 				mc.delete(keys[i]);
-			}
+			}*/
 			long elapse = System.currentTimeMillis() - start;
 			float avg = (float) elapse / runs;
 			result.append("\nthread " + threadNum + ": runs: " + runs + " deletes of obj " + (size/1024) + "KB -- avg time per req " + avg + " ms (total: " + elapse + " ms)");
 
-			// time stores
+			// time stores	
+			Random r = new Random();
+			
 			start = System.currentTimeMillis();
 			for (int i = 0; i < runs; i++) {
-				mc.set(keys[i], object);
+				object = new int[r.nextInt(1000)+1];
+				int index=i%100;//r.nextInt((100));				
+				
+				mc.set(keys[index], object);
+				//System.out.printf("*****set****%5d,%5d,%5d*********\r\n",i,index,object.length);
+				object = null;
+				//System.out.printf("set deys[%d]:%s\r\n",i,keys[i]);
+
+				index=r.nextInt((100));
+				try {
+					object = (int [])mc.get(keys[index]);
+					int isEmpty = 1;
+					if (object==null){
+						//System.out.printf("*****get****%5d,%5d,%15d*********\r\n",i,index,0);
+					}else {
+						//System.out.printf("*****get****%5d,%5d,%15d*********\r\n",i,index,object.length);
+					}
+				}
+				catch(Exception e)
+				{
+					System.out.println(e);
+					System.out.printf("****exception*****%X,%x,%x*********\r\n",index,i,keys.length);					
+				}
+				//System.out.printf("get deys[%d]:%s\r\n",(i*33*57*109*401)%(keys.length-1)/2,keys[(i*33*57*109*401)%(keys.length-1)/2]);
 			}
 			elapse = System.currentTimeMillis() - start;
 			avg = (float) elapse / runs;
 			result.append("\nthread " + threadNum + ": runs: " + runs + " stores of obj " + (size/1024) + "KB -- avg time per req " + avg + " ms (total: " + elapse + " ms)");
 
 			start = System.currentTimeMillis();
-			for (int i = 0; i < runs; i++) {
+			/*for (int i = 0; i < runs; i++) {
 				mc.get(keys[i]);
-			}
+			}*/
 			elapse = System.currentTimeMillis() - start;
 			avg = (float) elapse / runs;
 			result.append("\nthread " + threadNum + ": runs: " + runs + " gets of obj " + (size/1024) + "KB -- avg time per req " + avg + " ms (total: " + elapse + " ms)");

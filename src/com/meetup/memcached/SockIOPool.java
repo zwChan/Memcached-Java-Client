@@ -1066,7 +1066,7 @@ public class SockIOPool {
 	 * @param host host this socket is connected to
 	 * @param socket socket to add
 	 */
-	protected void addSocketToPool( Map<String,Map<SockIO,Long>> pool, String host, SockIO socket ) {
+	synchronized protected void addSocketToPool( Map<String,Map<SockIO,Long>> pool, String host, SockIO socket ) {
 
 		if ( pool.containsKey( host ) ) {
 			Map<SockIO,Long> sockets = pool.get( host );
@@ -1111,7 +1111,7 @@ public class SockIOPool {
 	 * @param pool pool to clear
 	 * @param host host to clear
 	 */
-	protected void clearHostFromPool( Map<String,Map<SockIO,Long>> pool, String host ) {
+	synchronized protected void clearHostFromPool( Map<String,Map<SockIO,Long>> pool, String host ) {
 
 		if ( pool.containsKey( host ) ) {
 			Map<SockIO,Long> sockets = pool.get( host );
@@ -1291,6 +1291,8 @@ public class SockIOPool {
 		if ( log.isDebugEnabled() )
 			log.debug( "++++ Starting self maintenance...." );
 
+		System.out.println("++++ Starting self maintenance....");
+		
 		// go through avail sockets and create sockets
 		// as needed to maintain pool settings
 		Map<String,Integer> needSockets =
@@ -1314,6 +1316,8 @@ public class SockIOPool {
 			}
 		}
 
+		
+		
 		// now create
 		Map<String,Set<SockIO>> newSockets =
 			new HashMap<String,Set<SockIO>>();
@@ -1323,6 +1327,7 @@ public class SockIOPool {
 
 			if ( log.isDebugEnabled() )
 				log.debug( "++++ Need to create " + need + " new sockets for pool for host: " + host );
+			System.out.printf( "++++ Need to create " + need + " new sockets for pool for host: " + host );
 
 			Set<SockIO> newSock = new HashSet<SockIO>( need );
 			for ( int j = 0; j < need; j++ ) {
@@ -1353,7 +1358,9 @@ public class SockIOPool {
 				Map<SockIO,Long> sockets = availPool.get( host );
 				if ( log.isDebugEnabled() )
 					log.debug( "++++ Size of avail pool for host (" + host + ") = " + sockets.size() );
-
+				
+				System.out.println( "++++ Size of avail pool for host (" + host + ") = " + sockets.size() );
+				
 				if ( sockets.size() > maxConn ) {
 					// need to close down some sockets
 					int diff        = sockets.size() - maxConn;
@@ -1364,6 +1371,8 @@ public class SockIOPool {
 					if ( log.isDebugEnabled() )
 						log.debug( "++++ need to remove " + needToClose + " spare sockets for pool for host: " + host );
 
+					System.out.println( "++++ need to remove " + needToClose + " spare sockets for pool for host: " + host );
+					
 					for ( Iterator<SockIO> j = sockets.keySet().iterator(); j.hasNext(); ) {
 						if ( needToClose <= 0 )
 							break;
@@ -1379,6 +1388,8 @@ public class SockIOPool {
 							if ( log.isDebugEnabled() )
 								log.debug( "+++ removing stale entry from pool as it is past its idle timeout and pool is over max spare" );
 
+							System.out.println( "+++ removing stale entry from pool as it is past its idle timeout and pool is over max spare" );
+							
 							// remove from the availPool
 							deadPool.put( socket, ZERO );
 							j.remove();
@@ -1398,6 +1409,8 @@ public class SockIOPool {
 				if ( log.isDebugEnabled() )
 					log.debug( "++++ Size of busy pool for host (" + host + ")  = " + sockets.size() );
 
+				System.out.println( "++++ Size of busy pool for host (" + host + ")  = " + sockets.size() );
+				
 				// loop through all connections and check to see if we have any hung connections
 				for ( Iterator<SockIO> j = sockets.keySet().iterator(); j.hasNext(); ) {
 					// remove stale entries
@@ -1410,6 +1423,8 @@ public class SockIOPool {
 					if ( (hungTime + maxBusyTime) < System.currentTimeMillis() ) {
 						log.error( "+++ removing potentially hung connection from busy pool ... socket in pool for " + (System.currentTimeMillis() - hungTime) + "ms" );
 
+						System.out.println( "+++ removing potentially hung connection from busy pool ... socket in pool for " + (System.currentTimeMillis() - hungTime) + "ms" );
+						
 						// remove from the busy pool
 						deadPool.put( socket, ZERO );
 						j.remove();
@@ -1427,6 +1442,7 @@ public class SockIOPool {
 
 		for ( SockIO socket : toClose ) {
 			try {
+				System.out.printf("true close: "+ socket);
 				socket.trueClose( false );
 			}
 			catch ( Exception ex ) {
@@ -1454,7 +1470,7 @@ public class SockIOPool {
 			Logger.getLogger( MaintThread.class.getName() );
 
 		private SockIOPool pool;
-		private long interval      = 1000 * 3; // every 3 seconds
+		private long interval      = 1000 * 10; // every 3 seconds
 		private boolean stopThread = false;
 		private boolean running;
 
